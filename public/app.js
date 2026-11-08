@@ -259,10 +259,10 @@ function vistaLogin() {
       <section class="login-marca">
         <div>
           ${logo(true)}
-          <h1>Cada persona ve solo lo que le corresponde.</h1>
-          <p>MediPortal reemplaza historias en papel y resultados enviados por correo. Este laboratorio muestra qué pasa cuando esa promesa se controla en la pantalla y no en el servidor, y cómo se corrige.</p>
+          <h1>Bienvenido a MediPortal.</h1>
+          <p>Desde este portal gestionamos la atención de nuestra red de clínicas: turnos, historias clínicas, resultados y facturación, en un solo lugar para pacientes, médicos y el equipo de la clínica.</p>
         </div>
-        <p>Trabajo práctico · Broken Access Control</p>
+        <p>Red de clínicas · Portal de gestión</p>
       </section>
       <section class="login-panel">
         ${controlModo()}
