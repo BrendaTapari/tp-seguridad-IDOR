@@ -1,0 +1,15 @@
+{
+  "name": "mediportal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Laboratorio del trabajo práctico: Broken Access Control en MediPortal.",
+  "scripts": {
+    "start": "node server/index.js",
+    "verificar": "node scripts/verificar.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.21.2"
+  }
+}
