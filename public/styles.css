@@ -105,32 +105,13 @@ button { cursor: pointer; }
   border-radius: 10px;
 }
 .nav a[aria-current="page"], .nav a:hover { background: var(--sidebar-soft); color: white; }
-.rol-local {
-  margin-top: auto;
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.82rem;
-}
-.rol-local select, .login-panel input, .campo input, .campo select, .campo textarea, .fila input {
+.login-panel input, .campo input, .campo select, .campo textarea, .fila input {
   width: 100%;
   border: 1px solid var(--line);
   background: white;
   border-radius: 10px;
   padding: 10px 12px;
 }
-.rol-local select,
-.rol-local select option {
-  background: #f6f3ee;
-  color: var(--ink);
-}
-.rol-local small { color: #f3f1ec; line-height: 1.35; }
-.rol-local small strong { color: #ffffff; }
-
 .contenido { min-width: 0; }
 .topbar {
   display: flex;
@@ -186,6 +167,7 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 560; }
 h1 { font-size: 2.1rem; margin: 0 0 8px; }
 h2, h3 { margin: 0 0 8px; }
 .lead { color: var(--muted); margin-top: 0; max-width: 46rem; }
+.lead a { color: var(--teal-dark); }
 main > * { min-width: 0; margin: 0; }
 main > h1 + .lead { margin-top: -10px; }
 
@@ -274,7 +256,6 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--lin
   }
   .nav { flex-direction: row; flex: none; overflow: auto; }
   .nav a { white-space: nowrap; }
-  .rol-local { margin-top: 0; }
   .topbar { padding: 14px 18px; align-items: flex-start; flex-direction: column; }
   .quien { margin-left: 0; width: 100%; justify-content: space-between; }
   .banda { margin-inline: 18px; }

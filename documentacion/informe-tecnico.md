@@ -58,7 +58,7 @@ Referencias de ubicación: archivo y líneas de la versión del repositorio. La 
 | V6 | Endpoint de prueba publicado | Backend | Endpoints internos o de prueba no retirados |
 | V7 | Asignación masiva en el perfil | Backend | Mass assignment (rol, estado de cuenta) |
 | V8 | Autorización por función ausente | Backend | Rutas administrativas que solo verifican autenticación |
-| V9 | Decisión de acceso con el rol del navegador | Frontend | Datos almacenados en el navegador (rol) |
+| V9 | El menú sigue el rol de la sesión | Frontend | Cambiar el rol solo desde Administración |
 | V10 | Ruta administrativa accesible por URL | Frontend | Rutas accesibles aunque no estén en el menú |
 | V11 | Identificadores expuestos y modificables | Frontend | IDs en la URL y en las solicitudes de red |
 
@@ -170,15 +170,15 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 ---
 
-### V9 · Decisión de acceso con el rol guardado en el navegador
+### V9 · El menú no cambia el rol
 
-**Qué es.** El menú se arma con `localStorage.mediportal_rol`, un dato que el usuario puede editar.
+**Qué es.** El menú muestra las pantallas del rol de la sesión. Cambiar lo que se ve en el navegador no cambia el rol que usa el servidor.
 
-**Dónde está.** [`app.js:30`](../public/app.js#L30) (lee el rol del navegador), [`app.js:182`](../public/app.js#L182) (filtra el menú con ese rol) y la lista de enlaces por rol en [`app.js:9-19`](../public/app.js#L9-L19).
+**Dónde está.** El menú se filtra con `state.user.rol` en [`public/app.js`](../public/app.js). El rol de una cuenta se cambia en `PATCH /api/admin/usuarios/:id`, y en modo seguro solo si `puedeAdministrarUsuarios` acepta la sesión.
 
-**Explotación.** Cambiar el rol guardado (selector de la barra lateral o `localStorage.setItem(...)`) hace aparecer **Administración** en el menú, aunque el servidor siga viendo a Ana como paciente.
+**Cómo se cambia.** El formulario de **Mi perfil** envía solo el nombre. El rol se agrega editando `PUT /api/perfil` en la pestaña Red del navegador. En modo vulnerable el servidor lo guarda. En modo seguro ese campo se rechaza. El rol de otra cuenta se cambia en **Administración**.
 
-**Corrección y lección.** Ocultar o mostrar un enlace es **usabilidad**, no seguridad. La protección real es que la API rechace la operación (V8). El laboratorio lo hace visible con la banda de desfase ([`app.js:170`](../public/app.js#L170)): *"El menú usa el rol guardado en el navegador… El servidor reconoce…"*.
+**Lección.** Ocultar un enlace es usabilidad. Quien escribe `#/admin` abre la pantalla igual, y la API decide si entrega los datos (V8 y V10).
 
 ---
 
@@ -216,7 +216,7 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 | IDOR · endpoints internos o de prueba no retirados | V6 |
 | Asignación masiva (rol, estado de cuenta) | V7 |
 | Rutas administrativas que solo verifican autenticación | V8 |
-| Frontend · decisiones a partir de datos del navegador (rol) | V9 |
+| Frontend · el menú muestra el rol de la sesión; el rol se cambia en Administración | V9 |
 | Frontend · rutas administrativas accesibles por URL | V10 |
 | Frontend · identificadores expuestos en URL y solicitudes de red | V11 |
 | *"El frontend no es una barrera de seguridad, sino una capa de usabilidad"* | V8 + V9 + V10 (demostrado en el modo seguro) |

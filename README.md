@@ -17,7 +17,7 @@ El práctico es una aplicación web de una sola carpeta. No usa framework de int
 | Claves | bcryptjs | Guarda la clave de demostración como hash. El endpoint de prueba no la devuelve |
 | Interfaz | HTML, CSS y JavaScript | Páginas del portal, sin React ni otro framework |
 | Datos | Memoria del proceso | Pacientes, historias, turnos y facturas se reinician con **Restablecer datos** |
-| Sesión | Token aleatorio | Viaja en `Authorization: Bearer`. El servidor no lee el rol guardado en el navegador |
+| Sesión | Token aleatorio | Viaja en `Authorization: Bearer`. El rol es el de la cuenta en el servidor |
 
 Las políticas vulnerable y segura están en `server/autorizacion.js`. Las rutas que las aplican están en `server/index.js`. La pantalla está en `public/`.
 
@@ -44,9 +44,32 @@ La clave de todas las cuentas es `portal`.
 
 ## Los roles
 
-El permiso lo decide el rol de la sesión: el de la cuenta con la que entraste. Esas reglas están en `server/autorizacion.js`. El menú se arma aparte, en `public/app.js` (la lista `ENLACES`), y solo elige qué enlaces se dibujan.
+El permiso lo decide el rol de la sesión: el de la cuenta con la que entraste. Esas reglas están en `server/autorizacion.js`. El menú, en `public/app.js` (la lista `ENLACES`), muestra las pantallas de ese mismo rol.
 
-El selector **Rol guardado en el navegador**, en la barra lateral, cambia ese menú. El servidor sigue usando el rol de la sesión. Si no coinciden, el portal lo avisa, y **Usar el rol del servidor en el menú** los vuelve a igualar. Esa diferencia es la prueba de [El frontend no autoriza](#el-frontend-no-autoriza).
+## Cómo cambiar un rol
+
+**Mi perfil** no ofrece un rol para elegir. El formulario manda solo el nombre. El rol se agrega en la petición, desde las herramientas del navegador, que es lo que se hace al interceptar un sistema.
+
+1. Entrá, abrí **Mi perfil** y presioná F12 → **Red** (Network).
+2. Presioná **Guardar nombre**. Aparece `PUT /api/perfil` con un cuerpo `{ "nombre": "Ana Paz" }`.
+3. Editá y reenviá esa petición. En Firefox: clic derecho sobre `perfil` → **Editar y reenviar**. El cuerpo queda así:
+
+```json
+{ "nombre": "Ana Paz", "rol": "sistemas", "activo": true }
+```
+
+El campo `rol` solo acepta estos valores:
+
+| Rol | Valor en el JSON |
+| --- | --- |
+| Paciente | `paciente` |
+| Médica / médico | `medico` |
+| Administración | `administrativo` |
+| Sistemas | `sistemas` |
+
+En modo vulnerable el servidor guarda `rol` y `activo`, y el menú pasa a ser el de ese rol. En modo seguro responde 400 y no guarda nada.
+
+Para cambiar el rol de otra persona, entrá con Nora Vidal (`nora.vidal@mediportal.test`, clave `portal`) y abrí **Administración**. Cada fila se guarda con `PATCH /api/admin/usuarios/:id`. En modo seguro solo Sistemas puede hacerlo. En modo vulnerable esa pantalla responde a cualquier sesión que abra `#/admin`.
 
 **Administración** nombra dos cosas distintas. El rol Administración (`administrativo`, Carlos Ruiz) gestiona agenda y facturas. El ítem de menú Administración (`#/admin`) es la pantalla de usuarios y roles, y en el menú solo aparece para Sistemas.
 
@@ -169,13 +192,11 @@ La auditoría registra lecturas y escrituras sensibles, permitidas y rechazadas,
 
 ### El frontend no autoriza
 
-El menú se arma con `localStorage.mediportal_rol`, no con una decisión del servidor. El selector **Rol guardado en el navegador**, en la barra lateral, cambia esa clave. El menú pasa a mostrar Administración y el servidor sigue viendo el rol de la sesión.
-
-`#/admin` se puede abrir escribiendo la ruta aunque el enlace no esté. En modo vulnerable la API responde 200. En modo seguro responde 403 y la pantalla muestra el rechazo: la vista se abrió, el dato no.
+El menú usa el rol de la sesión. Ocultar un enlace no es el control: `#/admin` se puede abrir escribiendo la ruta aunque no esté en el menú. En modo vulnerable la API responde 200. En modo seguro responde 403 y la pantalla muestra el rechazo: la vista se abrió, el dato no.
 
 Los números de paciente, archivo, turno y factura están en el hash (`#/historias/3`, `#/resultados/3`, `#/reportes/3`) y en la solicitud (`GET /api/pacientes/3/historia`). La prueba es cambiar ese número en la barra de direcciones. Ocultar el enlace o no dibujar el botón sería usabilidad, no un control: por eso el modo vulnerable igual muestra el formulario de diagnóstico.
 
-La sesión viaja en `Authorization: Bearer`, no en una cookie. El servidor no lee el rol del navegador.
+La sesión viaja en `Authorization: Bearer`, no en una cookie. El servidor usa el rol guardado en la cuenta.
 
 ## Qué queda a propósito fuera de este trabajo
 

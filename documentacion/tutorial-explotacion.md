@@ -62,20 +62,19 @@ Activar **Vulnerable**. Hacer las pruebas **en este orden**: las últimas modifi
 | 6 | Endpoint de prueba | **Llamar sin sesión** | Una ruta olvidada responde sin autenticarse (V6) | `200`. Lista de cuentas, con aviso *"Endpoint de diagnóstico expuesto"* |
 | 7 | Autorización por función | **Listar usuarios** | La API admin no mira el rol (V8) | `200`. Lista completa de usuarios |
 | 8 | Autorización por función | **Abrir #/admin** | La pantalla oculta del menú se abre por URL (V10) | Se abre el panel con todos los usuarios y la auditoría |
-| 9 | El rol en el navegador | **Mostrar menú de sistemas** | El menú se decide con un dato editable (V9) | Aparece **Administración** en el menú; el servidor sigue viendo a Ana como paciente |
-| 10 | IDOR en turnos | **Reprogramar turno 102** ⚠ | Modifica un registro ajeno (V3) | `200`. Estado `reprogramado`, nueva fecha |
-| 11 | IDOR en facturas | **Pagar factura 202** ⚠ | Altera un comprobante ajeno (V4) | `200`. Estado `pagada` |
-| 12 | Asignación masiva | **Enviar rol sistemas** ⚠ | El perfil acepta campos de más (V7) | `200`, `aplicados: ["nombre","rol","activo"]`. **Ana pasa a ser Sistemas** |
+| 9 | IDOR en turnos | **Reprogramar turno 102** ⚠ | Modifica un registro ajeno (V3) | `200`. Estado `reprogramado`, nueva fecha |
+| 10 | IDOR en facturas | **Pagar factura 202** ⚠ | Altera un comprobante ajeno (V4) | `200`. Estado `pagada` |
+| 11 | Asignación masiva | **Enviar rol sistemas** ⚠ | El perfil acepta campos de más (V7) | `200`, `aplicados: ["nombre","rol","activo"]`. **Ana pasa a ser Sistemas** |
 
-⚠ **Modifican datos.** Después de la prueba 9 presionar **Usar el rol del servidor en el menú** (banda de aviso) para volver el menú a la normalidad. Después de las pruebas 10 a 12, presionar **Restablecer datos** antes de pasar al modo seguro. La prueba 12 deja a Ana como Sistemas hasta que se restablece.
+⚠ **Modifican datos.** Después de las pruebas 9 a 11, presioná **Restablecer datos** antes de pasar al modo seguro. La prueba 11 deja a Ana como Sistemas hasta que se restablece.
 
-> **Por qué este orden:** si se hace la prueba 12 antes de la 7 o la 8, Ana ya sería Sistemas y la API de administración respondería `200` de forma legítima, lo que invalida la demostración.
+> **Por qué este orden:** si se hace la prueba 11 antes de la 7 o la 8, Ana ya sería Sistemas y la API de administración respondería `200` de forma legítima, lo que invalida la demostración.
 
 ## 4. Parte B · modo seguro
 
 1. Presionar **Restablecer datos**.
 2. Activar **Seguro**. Los resultados de la guía se limpian.
-3. **Sin cambiar de cuenta**, repetir los 12 botones en el mismo orden.
+3. **Sin cambiar de cuenta**, repetir los botones de la guía en el mismo orden.
 
 El servidor ahora rechaza cada operación:
 
@@ -89,10 +88,9 @@ El servidor ahora rechaza cada operación:
 | 6 | Llamar sin sesión | `404` *"No encontrado."* (el endpoint "se retiró") |
 | 7 | Listar usuarios | `403` *"No tiene permiso para administrar usuarios."* |
 | 8 | Abrir #/admin | La pantalla se abre pero muestra **"El servidor rechazó el acceso"** (`403`) |
-| 9 | Mostrar menú de sistemas | El menú muestra Administración, pero al abrirla responde `403` |
-| 10 | Reprogramar turno 102 | `403` *"No tiene permiso para reprogramar este turno."* |
-| 11 | Pagar factura 202 | `403` *"No tiene permiso para registrar el pago de esta factura."* |
-| 12 | Enviar rol sistemas | `400` `CAMPOS_NO_PERMITIDOS`, `campos: ["rol","activo"]`. **No se escribe nada** |
+| 9 | Reprogramar turno 102 | `403` *"No tiene permiso para reprogramar este turno."* |
+| 10 | Pagar factura 202 | `403` *"No tiene permiso para registrar el pago de esta factura."* |
+| 11 | Enviar rol sistemas | `400` `CAMPOS_NO_PERMITIDOS`, `campos: ["rol","activo"]`. **No se escribe nada** |
 
 Es decir: el mismo botón, la misma petición, pero ahora el control existe **en el servidor**.
 
@@ -117,7 +115,7 @@ Los botones ejecutan las mismas peticiones que se pueden hacer a mano. Sirven pa
 
 - **Cambiar el identificador en la URL (V11).** En la barra de direcciones, reemplazar el número: `#/historias/3`, `#/resultados/3`, `#/turnos/102`, `#/facturas/202` o `#/reportes/3`.
 - **Ver la petición real.** Abrir las DevTools (**F12**) → **Network**, y repetir cualquier prueba: aparece `GET /api/pacientes/3/historia` con el identificador a la vista.
-- **Cambiar el rol del navegador (V9).** En la barra lateral, el selector **Rol guardado en el navegador** modifica `localStorage.mediportal_rol`. También se puede ver en **Application** (Chrome) o **Storage** (Firefox) → **Local Storage**.
+- **Cambiar un rol.** En **Mi perfil**, **Guardar nombre** manda solo el nombre. En la pestaña **Red**, editá y reenviá `PUT /api/perfil` agregando `"rol"` (`paciente`, `medico`, `administrativo` o `sistemas`). En modo vulnerable el servidor lo guarda. En modo seguro responde 400. El rol de otra persona se cambia desde **Administración**, con Nora.
 - **Probar con otro rol.** Entrar como la Dra. Molina, Carlos o Nora para ver la **separación de funciones**: la médica no ve facturas, administración no ve historias y sistemas no ve datos clínicos.
 
 > Con otro rol, algunos accesos del modo seguro son **legítimos**: la Dra. Molina atiende a María, y administración ve todos los turnos y facturas. La guía está narrada con Ana Paz para que el rechazo sea claro.
@@ -125,7 +123,7 @@ Los botones ejecutan las mismas peticiones que se pueden hacer a mano. Sirven pa
 ## 7. Guion sugerido para la exposición (≈10 minutos)
 
 1. **(1 min)** Qué es MediPortal y su premisa: *cada persona ve solo lo que le corresponde*.
-2. **(4 min)** Modo vulnerable como Ana: pruebas 1, 2, 5, 6, 7, 9 y 12. Mostrar la respuesta con datos de María y cómo un perfil común se convierte en Sistemas.
+2. **(4 min)** Modo vulnerable como Ana: pruebas 1, 2, 5, 6, 7 y 11. Mostrar la respuesta con datos de María y cómo un perfil común se convierte en Sistemas.
 3. **(3 min)** **Restablecer datos**, pasar a **Seguro** y repetir las mismas pruebas: todo `403`/`404`/`400`.
 4. **(1 min)** Mostrar en [`server/autorizacion.js`](../server/autorizacion.js) la línea `if (esVulnerable(modo)) return true;` y la regla que sigue: ahí está la diferencia.
 5. **(1 min)** Conclusión: el frontend es usabilidad; la autorización se decide en el servidor, por recurso y por función.
@@ -135,8 +133,8 @@ Los botones ejecutan las mismas peticiones que se pueden hacer a mano. Sirven pa
 | Síntoma | Causa y solución |
 |---|---|
 | Los botones del modo seguro responden `200` | Se está entrando con un rol al que le corresponde el acceso. Repetir con **Ana Paz** |
-| Listar usuarios da `200` en modo seguro | Ana quedó como Sistemas por la prueba 12. Presionar **Restablecer datos** |
-| El menú muestra Administración y el servidor lo rechaza | Es lo esperado en la prueba 9. Usar **Usar el rol del servidor en el menú** para volver |
+| Listar usuarios da `200` en modo seguro | Ana quedó como Sistemas por la prueba 11. Presionar **Restablecer datos** |
+| El menú no muestra Administración | El menú sigue el rol de la sesión. Para cambiar un rol, entrá como Nora y usá **Administración** |
 | Un resultado de la guía quedó de la prueba anterior | Cambiar de modo limpia la guía. También sirve volver a presionar el botón |
 | `EADDRINUSE` al iniciar | El puerto 3000 está ocupado: `PORT=3100 npm start` |
 | Querer comprobar todo de una vez | `npm run verificar` recorre la API en ambos modos y falla ante cualquier desvío |

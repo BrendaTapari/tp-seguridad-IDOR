@@ -27,18 +27,11 @@ const TAREAS = {
 const state = {
   token: sessionStorage.getItem("mp_token"),
   user: leerJson(sessionStorage.getItem("mp_user")),
-  rolUi: localStorage.getItem("mediportal_rol"),
   modo: "vulnerable",
   aviso: null,
   guia: {},
-  perfilResultado: "",
   route: { name: "inicio", id: null },
 };
-
-if (state.user && !state.rolUi) {
-  state.rolUi = state.user.rol;
-  localStorage.setItem("mediportal_rol", state.rolUi);
-}
 
 function leerJson(texto) {
   try {
@@ -85,10 +78,8 @@ function etiquetaRol(rol) {
 function setSession(data) {
   state.token = data.token;
   state.user = data.usuario;
-  state.rolUi = data.usuario.rol;
   sessionStorage.setItem("mp_token", data.token);
   sessionStorage.setItem("mp_user", JSON.stringify(data.usuario));
-  localStorage.setItem("mediportal_rol", data.usuario.rol);
 }
 
 function guardarUsuario(usuario) {
@@ -99,10 +90,8 @@ function guardarUsuario(usuario) {
 function clearSession() {
   state.token = null;
   state.user = null;
-  state.rolUi = null;
   sessionStorage.removeItem("mp_token");
   sessionStorage.removeItem("mp_user");
-  localStorage.removeItem("mediportal_rol");
 }
 
 async function api(path, opts = {}) {
@@ -167,39 +156,20 @@ function bandaModo() {
   return `<div class="banda banda-vulnerable">Modo vulnerable: una sesión válida alcanza para leer o modificar un recurso si se conoce su número. El rol no se controla en las funciones administrativas.</div>`;
 }
 
-function bandaDesfase() {
-  if (!state.user || state.rolUi === state.user.rol) return "";
-  return `
-    <div class="banda banda-desfase">
-      El menú usa el rol guardado en el navegador (${esc(etiquetaRol(state.rolUi))}).
-      El servidor reconoce ${esc(etiquetaRol(state.user.rol))}.
-      <button type="button" class="btn-texto" data-accion="sincronizar-rol">Usar el rol del servidor en el menú</button>
-    </div>`;
-}
-
 function shell(contenido) {
   const route = state.route;
-  const enlaces = ENLACES.filter((item) => item[2].includes(state.rolUi))
+  const enlaces = ENLACES.filter((item) => item[2].includes(state.user.rol))
     .map(([href, texto]) => {
       const nombre = href.slice(2);
       const actual = route.name === nombre ? ' aria-current="page"' : "";
       return `<a href="${href}"${actual}>${texto}</a>`;
     })
     .join("");
-  const opciones = ROLES.map(([valor, texto]) => {
-    const selected = valor === state.rolUi ? " selected" : "";
-    return `<option value="${valor}"${selected}>${texto}</option>`;
-  }).join("");
   return `
     <div class="app">
       <aside class="sidebar">
         ${logo(true)}
         <nav class="nav">${enlaces}</nav>
-        <label class="rol-local">
-          Rol guardado en el navegador
-          <select data-rol-ui>${opciones}</select>
-          <small>Esto solo cambia el menú. El servidor sigue usando el rol de la sesión: <strong>${esc(etiquetaRol(state.user.rol))}</strong>.</small>
-        </label>
       </aside>
       <div class="contenido">
         <header class="topbar">
@@ -213,7 +183,6 @@ function shell(contenido) {
           </div>
         </header>
         ${bandaModo()}
-        ${bandaDesfase()}
         <main>
           ${state.aviso ? `<p class="aviso aviso-${esc(state.aviso.tipo)}">${esc(state.aviso.texto)}</p>` : ""}
           ${contenido}
@@ -479,22 +448,13 @@ async function vistaReportes(id) {
 }
 
 function vistaPerfil() {
-  const crudo = JSON.stringify({ nombre: state.user.nombre, rol: "sistemas", activo: true }, null, 2);
   return `
     <h1>Mi perfil</h1>
-    <p class="lead">El formulario normal solo envía el nombre. El bloque de abajo envía el cuerpo tal cual, para mostrar la asignación masiva.</p>
+    <p class="lead">El formulario envía solo el nombre, en <code>PUT /api/perfil</code>. Las demás cuentas se modifican en <a href="#/admin">Administración</a>.</p>
     <form class="card" data-form="perfil">
       <p class="meta">${esc(state.user.email)} · rol en el servidor: ${esc(etiquetaRol(state.user.rol))}</p>
       <label class="campo">Nombre <input name="nombre" required value="${esc(state.user.nombre)}"></label>
       <button class="btn" type="submit">Guardar nombre</button>
-    </form>
-    <form class="card" data-form="perfil-crudo">
-      <h2>Cuerpo sin lista de permitidos</h2>
-      <label class="campo">JSON
-        <textarea name="json">${esc(crudo)}</textarea>
-      </label>
-      <button class="btn-peligro" type="submit">Enviar campos de más</button>
-      <div id="perfil-resultado">${state.perfilResultado}</div>
     </form>`;
 }
 
@@ -575,7 +535,6 @@ function vistaGuia() {
       ${escenario("debug", "Endpoint de prueba", "<code>GET /api/internal/debug/users</code> no pide sesión en el modo vulnerable y lista las cuentas. En el modo seguro responde 404, como si se hubiera retirado.", [{ guia: "debug", texto: "Llamar sin sesión" }])}
       ${escenario("perfil", "Asignación masiva", "El perfil vulnerable copia <code>rol</code> y <code>activo</code> además del nombre. Después de esta prueba, Ana queda como sistemas hasta que restablezcas los datos. En modo seguro la petición se rechaza entera.", [{ guia: "perfil-rol", texto: "Enviar rol sistemas", peligro: true }])}
       ${escenario("admin", "Autorización por función", "La pantalla no está en el menú de Ana, pero la ruta <code>#/admin</code> existe. En modo vulnerable el servidor solo mira si hay sesión.", [{ guia: "admin", texto: "Listar usuarios" }, { guia: "ir-admin", texto: "Abrir #/admin" }])}
-      ${escenario("navegador", "El rol en el navegador", "El menú lee <code>localStorage.mediportal_rol</code>. Cambiarlo muestra Administración aunque el servidor siga viendo a Ana como paciente. En modo seguro esa pantalla responde 403.", [{ guia: "rol-navegador", texto: "Mostrar menú de sistemas" }])}
     </div>`;
 }
 
@@ -671,16 +630,6 @@ async function correrGuia(guia, destino) {
     location.hash = "#/admin";
     return;
   }
-  if (guia === "rol-navegador") {
-    state.rolUi = "sistemas";
-    localStorage.setItem("mediportal_rol", "sistemas");
-    state.aviso = {
-      tipo: "info",
-      texto: "El menú ahora muestra Administración. El servidor no cambió tu rol. Abrí esa pantalla.",
-    };
-    render();
-    return;
-  }
   const acciones = {
     "historia-3": ["GET", "/api/pacientes/3/historia", { method: "GET" }],
     "resultado-3": ["GET", "/api/resultados/3", { method: "GET" }],
@@ -726,7 +675,6 @@ document.addEventListener("click", async (evento) => {
   if (accion === "modo") {
     await api("/api/lab/modo", { method: "POST", body: { modo: el.dataset.modo }, auth: false });
     state.guia = {};
-    state.perfilResultado = "";
     state.aviso = {
       tipo: "info",
       texto: el.dataset.modo === "seguro"
@@ -739,7 +687,6 @@ document.addEventListener("click", async (evento) => {
   if (accion === "restablecer") {
     await api("/api/lab/restablecer", { method: "POST", auth: false });
     state.guia = {};
-    state.perfilResultado = "";
     state.aviso = { tipo: "ok", texto: "Datos y roles vueltos al estado inicial." };
     render();
     return;
@@ -748,12 +695,6 @@ document.addEventListener("click", async (evento) => {
     await api("/api/auth/salir", { method: "POST", body: {} });
     clearSession();
     location.hash = "#/login";
-    return;
-  }
-  if (accion === "sincronizar-rol") {
-    state.rolUi = state.user.rol;
-    localStorage.setItem("mediportal_rol", state.rolUi);
-    render();
     return;
   }
   if (accion === "guia") {
@@ -781,13 +722,6 @@ document.addEventListener("click", async (evento) => {
     };
     render();
   }
-});
-
-document.addEventListener("change", (evento) => {
-  if (!evento.target.matches("[data-rol-ui]")) return;
-  state.rolUi = evento.target.value;
-  localStorage.setItem("mediportal_rol", state.rolUi);
-  render();
 });
 
 document.addEventListener("submit", async (evento) => {
@@ -841,26 +775,13 @@ document.addEventListener("submit", async (evento) => {
     const res = await api("/api/perfil", { method: "PUT", body: { nombre: datos.get("nombre") } });
     if (res.data?.usuario) guardarUsuario(res.data.usuario);
     state.aviso = {
-      tipo: res.ok ? "ok" : "error",
-      texto: res.ok ? "Nombre actualizado." : (res.data.error || "No se pudo guardar."),
+      tipo: res.ok ? (res.data.aviso ? "info" : "ok") : "error",
+      texto: res.ok
+        ? (res.data.aviso || "Nombre actualizado.")
+        : (res.data.error || "No se pudo guardar."),
     };
     render();
     return;
-  }
-  if (form.dataset.form === "perfil-crudo") {
-    let cuerpo;
-    try {
-      cuerpo = JSON.parse(String(datos.get("json") || ""));
-    } catch {
-      state.perfilResultado = `<p class="error">Ese texto no es JSON válido.</p>`;
-      render();
-      return;
-    }
-    const res = await api("/api/perfil", { method: "PUT", body: cuerpo });
-    if (res.data?.usuario) guardarUsuario(res.data.usuario);
-    state.perfilResultado = bloqueApi("PUT", "/api/perfil", res.status, res.data);
-    state.aviso = res.ok && res.data.aviso ? { tipo: "info", texto: res.data.aviso } : null;
-    render();
   }
 });
 
