@@ -592,6 +592,23 @@ const VISTAS = {
 
 let renderSeq = 0;
 
+async function unicoVisible(route) {
+  if (route.id) return null;
+  if (route.name === "reportes") return state.user.pacienteId || null;
+  const listas = {
+    historias: ["/api/historias", "historias", (item) => item.pacienteId],
+    resultados: ["/api/resultados", "resultados", (item) => item.id],
+    turnos: ["/api/turnos", "turnos", (item) => item.id],
+    facturas: ["/api/facturas", "facturas", (item) => item.id],
+  };
+  const lista = listas[route.name];
+  if (!lista) return null;
+  const res = await api(lista[0]);
+  const items = res.data?.[lista[1]] || [];
+  if (items.length !== 1) return null;
+  return lista[2](items[0]) || null;
+}
+
 async function render() {
   const seq = ++renderSeq;
   state.route = parseRoute();
@@ -611,6 +628,12 @@ async function render() {
     if (seq !== renderSeq) return;
     if (!yo.ok) return;
     guardarUsuario(yo.data.usuario);
+    const unico = await unicoVisible(state.route);
+    if (seq !== renderSeq) return;
+    if (unico) {
+      location.replace(`#/${state.route.name}/${unico}`);
+      return;
+    }
   }
   document.title = "MediPortal";
   let html = "";

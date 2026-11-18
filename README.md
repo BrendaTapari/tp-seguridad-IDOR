@@ -75,10 +75,28 @@ Ese comando recorre la API en los dos modos y falla si un control no responde co
 
 ## Los dos modos
 
-El interruptor **Vulnerable / Seguro** cambia la política del servidor. No es una protección mágica: las dos políticas están en `server/autorizacion.js` y las rutas de `server/index.js` llaman a esas funciones.
+El interruptor **Vulnerable / Seguro** guarda `lab.modo` en el servidor (`server/datos.js`). El botón manda `POST /api/lab/modo` con `{ "modo": "seguro" }` o `"vulnerable"`. La cuenta sigue igual, el menú sigue igual y lo ya escrito queda escrito. El modo es uno para todo el proceso: dos ventanas ven el mismo.
 
-- **Vulnerable:** si hay sesión, se puede leer o modificar un recurso conociendo su número. El perfil copia campos de más. Las rutas de administración no miran el rol. El endpoint de prueba responde.
-- **Seguro:** cada recurso se autoriza por rol y por pertenencia. El perfil solo acepta el nombre. La pantalla de usuarios exige el rol `sistemas`. El endpoint de prueba responde 404.
+Cada ruta de `server/index.js` llama a una función de `server/autorizacion.js` y le pasa ese modo. Todas empiezan así:
+
+```js
+if (esVulnerable(modo)) return true;
+```
+
+En vulnerable la función termina ahí: hay sesión y el número alcanza. En seguro esa línea no corta y corre la validación de abajo. El detalle de cada falla está en [Análisis](#análisis); esta es la lista de lo que el modo seguro comprueba.
+
+| Qué se pide | Dónde | Validación en modo seguro |
+| --- | --- | --- |
+| Historia o resultado | `puedeLeerClinico` | Paciente: solo su `pacienteId`. Médica: solo pacientes de `asignaciones`. Administración y sistemas: no. |
+| Escribir un diagnóstico | `puedeEscribirClinico` | Solo la médica, y solo sobre una paciente asignada. |
+| Ver o reprogramar un turno | `puedeVerTurno`, `puedeReprogramarTurno` | Paciente: el suyo. Médica: si ella es la profesional. Administración: cualquiera. Sistemas: no. |
+| Ver o pagar una factura | `puedeVerFactura` | Paciente: la suya. Administración: cualquiera. Médica y sistemas: no. |
+| Exportar un paciente | `alcanceExportacion` | Paciente: lo propio. Médica: clínica de sus pacientes, sin facturas. Administración: facturas, sin clínica. Sistemas: nada. |
+| Usuarios y auditoría | `puedeAdministrarUsuarios` | Solo si `rol === "sistemas"`. |
+| Cambiar el perfil | `PUT /api/perfil`, en `server/index.js` | Solo el campo `nombre`. Si llega `rol`, `activo` u otro campo, responde 400 y no guarda nada. |
+| Listar cuentas de prueba | `GET /api/internal/debug/users` | Responde 404. |
+
+Si la validación no pasa, la ruta responde 403 y no incluye el recurso. La pantalla puede abrirse igual: el permiso lo decide el servidor.
 
 Las listas del inicio están filtradas en los dos modos. El portal se ve bien y el fallo queda en el acceso directo, que es la forma habitual de esta falla: la pantalla lista “lo mío”, pero `GET /api/pacientes/3/historia` no pregunta de quién es.
 
