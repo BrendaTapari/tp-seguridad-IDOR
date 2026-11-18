@@ -39,9 +39,16 @@ export function puedeVerFactura(usuario, factura, modo) {
   return false;
 }
 
+export function alcanceResumen(usuario, modo) {
+  if (esVulnerable(modo)) return "completo";
+  if (usuario.rol === "medico") return "clinico";
+  if (usuario.rol === "administrativo") return "facturacion";
+  return null;
+}
+
 export function alcanceExportacion(usuario, pacienteId, modo) {
   if (esVulnerable(modo)) return "completo";
-  if (usuario.rol === "paciente" && usuario.pacienteId === pacienteId) return "propio";
+  if (usuario.rol === "paciente") return null;
   if (usuario.rol === "medico" && pacientesDelMedico(usuario.id).includes(pacienteId)) return "clinico";
   if (usuario.rol === "administrativo") return "facturacion";
   return null;

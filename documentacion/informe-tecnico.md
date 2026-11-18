@@ -130,7 +130,7 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Explotación.** `GET /api/reportes/export?pacienteId=3` devuelve alcance `completo` (diagnósticos, estudios y facturas de María).
 
-**Corrección.** La función devuelve un **alcance recortado según el rol**: paciente, solo lo propio; médico, solo clínica de sus pacientes; administración, solo facturación (sin DNI ni diagnósticos); sistemas, nada. Si no hay alcance, `403`. El filtro del cliente nunca define el alcance por sí solo.
+**Corrección.** La función devuelve un alcance recortado según el rol: el paciente no exporta; la médica, solo la clínica de sus pacientes; administración, solo facturación (sin DNI ni diagnósticos); sistemas, nada. Si no hay alcance, `403`. El filtro del cliente nunca define el alcance por sí solo.
 
 ---
 

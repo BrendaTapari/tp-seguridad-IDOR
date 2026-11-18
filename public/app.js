@@ -11,7 +11,7 @@ const ENLACES = [
   ["#/resultados", "Resultados", ["paciente", "medico"]],
   ["#/turnos", "Turnos", ["paciente", "medico", "administrativo"]],
   ["#/facturas", "Facturación", ["paciente", "administrativo"]],
-  ["#/reportes", "Reportes", ["paciente", "medico", "administrativo"]],
+  ["#/reportes", "Reportes", ["medico", "administrativo"]],
   ["#/perfil", "Mi perfil", ["paciente", "medico", "administrativo", "sistemas"]],
   ["#/admin", "Administración", ["sistemas"]],
   ["#/guia", "Guía del práctico", ["paciente", "medico", "administrativo", "sistemas"]],
@@ -428,22 +428,45 @@ async function vistaFactura(id) {
     </article>`;
 }
 
-async function vistaReportes(id) {
-  if (!id) {
-    const propio = state.user.pacienteId
-      ? `<p><a href="#/reportes/${state.user.pacienteId}">Abrir mi reporte</a></p>`
-      : "";
+function graficoBarras(barras) {
+  const maximo = Math.max(1, ...barras.map((barra) => Number(barra.valor) || 0));
+  const filas = barras.map((barra) => {
+    const valor = Number(barra.valor) || 0;
+    const ancho = Math.round((valor / maximo) * 100);
+    const critica = barra.etiqueta === "Críticos" ? " critica" : "";
     return `
-      <h1>Exportar reporte</h1>
-      <p class="lead">El paciente va en la dirección, después de <code>#/reportes/</code>.</p>
-      ${propio}`;
+      <div class="barra${critica}">
+        <span class="barra-etiqueta">${esc(barra.etiqueta)}</span>
+        <span class="barra-pista"><span class="barra-valor" style="width:${ancho}%"></span></span>
+        <span class="barra-numero">${valor}</span>
+      </div>`;
+  }).join("");
+  return `
+    <section class="card grafico" aria-label="Movimiento del hospital">
+      <h2>Movimiento del hospital</h2>
+      <div class="barras">${filas}</div>
+    </section>`;
+}
+
+async function vistaReportes(id) {
+  const resumenPath = "/api/reportes/resumen";
+  const resumen = await api(resumenPath);
+  if (!id) {
+    if (!resumen.ok) return bloqueado("GET", resumenPath, resumen.status, resumen.data);
+    return `
+      ${solicitud("GET", resumenPath, resumen.status)}
+      <h1>Reportes del hospital</h1>
+      <p class="lead">El gráfico cuenta pacientes, casos críticos, estudios, turnos y facturas. El informe de una persona va después, en <code>#/reportes/</code> y el número. No está en el menú de un paciente.</p>
+      ${graficoBarras(resumen.data.barras || [])}`;
   }
   const path = `/api/reportes/export?pacienteId=${id}`;
   const res = await api(path);
   if (!res.ok) return bloqueado("GET", path, res.status, res.data);
+  const grafico = resumen.ok ? graficoBarras(resumen.data.barras || []) : "";
   return `
     ${solicitud("GET", path, res.status)}
-    <h1>Reporte</h1>
+    <h1>Reporte del hospital</h1>
+    ${grafico}
     <pre>${esc(JSON.stringify(res.data, null, 2))}</pre>`;
 }
 
@@ -531,7 +554,7 @@ function vistaGuia() {
       ${escenario("resultado", "IDOR en un resultado", "El archivo 3 es la ecografía de María. Conocer el número de archivo no debería alcanzar.", [{ guia: "resultado-3", texto: "Pedir resultado 3" }])}
       ${escenario("turno", "IDOR en turnos", "El turno 102 es de Lucas con el Dr. Herrera. Además de leerlo, se puede cambiar la fecha.", [{ guia: "turno-102", texto: "Ver turno 102" }, { guia: "reprogramar-102", texto: "Reprogramar turno 102", peligro: true }])}
       ${escenario("factura", "IDOR en facturas", "La factura 202 es la resonancia de Lucas. Registrar el pago modifica un comprobante ajeno.", [{ guia: "factura-202", texto: "Ver factura 202" }, { guia: "pagar-202", texto: "Pagar factura 202", peligro: true }])}
-      ${escenario("export", "Exportación sin alcance", "El reporte acepta <code>pacienteId</code>. En modo vulnerable devuelve diagnósticos, estudios y facturas. En modo seguro, un paciente solo exporta lo propio; administración solo factura; la médica solo ve clínica de sus pacientes.", [{ guia: "export-3", texto: "Exportar paciente 3" }])}
+      ${escenario("export", "Exportación sin alcance", "Los reportes son del hospital y no están en el menú de Ana. La ruta <code>#/reportes/3</code> igual existe. En modo vulnerable devuelve diagnósticos, estudios y facturas. En modo seguro un paciente no exporta; administración solo factura; la médica solo ve clínica de sus pacientes.", [{ guia: "export-3", texto: "Exportar paciente 3" }])}
       ${escenario("debug", "Endpoint de prueba", "<code>GET /api/internal/debug/users</code> no pide sesión en el modo vulnerable y lista las cuentas. En el modo seguro responde 404, como si se hubiera retirado.", [{ guia: "debug", texto: "Llamar sin sesión" }])}
       ${escenario("perfil", "Asignación masiva", "El perfil vulnerable copia <code>rol</code> y <code>activo</code> además del nombre. Después de esta prueba, Ana queda como sistemas hasta que restablezcas los datos. En modo seguro la petición se rechaza entera.", [{ guia: "perfil-rol", texto: "Enviar rol sistemas", peligro: true }])}
       ${escenario("admin", "Autorización por función", "La pantalla no está en el menú de Ana, pero la ruta <code>#/admin</code> existe. En modo vulnerable el servidor solo mira si hay sesión.", [{ guia: "admin", texto: "Listar usuarios" }, { guia: "ir-admin", texto: "Abrir #/admin" }])}
@@ -553,7 +576,6 @@ let renderSeq = 0;
 
 async function unicoVisible(route) {
   if (route.id) return null;
-  if (route.name === "reportes") return state.user.pacienteId || null;
   const listas = {
     historias: ["/api/historias", "historias", (item) => item.pacienteId],
     resultados: ["/api/resultados", "resultados", (item) => item.id],

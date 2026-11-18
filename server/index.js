@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import express from "express";
 import {
   alcanceExportacion,
+  alcanceResumen,
   facturasVisibles,
   historiasVisibles,
   puedeAdministrarUsuarios,
@@ -25,6 +26,7 @@ import {
   buscarUsuarioPorEmail,
   init,
   lab,
+  pacientesDelMedico,
   restablecer,
   siguienteId,
   store,
@@ -314,6 +316,38 @@ app.post("/api/facturas/:id/pagar", exigirSesion, (req, res) => {
   }
   factura.estado = "pagada";
   res.json({ factura: vistaFactura(factura) });
+});
+
+function barrasResumen(alcance, usuario) {
+  const ids = alcance === "clinico" ? new Set(pacientesDelMedico(usuario.id)) : null;
+  const entra = (item) => !ids || ids.has(item.pacienteId);
+  const pacientes = ids ? store.pacientes.filter((item) => ids.has(item.id)).length : store.pacientes.length;
+  const clinicas = [
+    { etiqueta: "Pacientes", valor: pacientes },
+    { etiqueta: "Críticos", valor: store.historias.filter((item) => entra(item) && item.gravedad === "critico").length },
+    { etiqueta: "En seguimiento", valor: store.historias.filter((item) => entra(item) && item.gravedad === "seguimiento").length },
+    { etiqueta: "Estudios", valor: store.resultados.filter(entra).length },
+    { etiqueta: "Turnos", valor: store.turnos.filter(entra).length },
+  ];
+  const pendientes = store.facturas.filter((item) => entra(item) && item.estado === "pendiente").length;
+  const pagadas = store.facturas.filter((item) => entra(item) && item.estado === "pagada").length;
+  if (alcance === "facturacion") {
+    return [
+      { etiqueta: "Pacientes", valor: pacientes },
+      { etiqueta: "Turnos", valor: store.turnos.length },
+      { etiqueta: "Facturas pendientes", valor: pendientes },
+      { etiqueta: "Facturas pagadas", valor: pagadas },
+    ];
+  }
+  if (alcance === "clinico") return clinicas;
+  return [...clinicas, { etiqueta: "Facturas pendientes", valor: pendientes }];
+}
+
+app.get("/api/reportes/resumen", exigirSesion, (req, res) => {
+  const alcance = alcanceResumen(req.usuario, lab.modo);
+  registrarDecision(req.usuario, "resumen-hospital", "reportes", Boolean(alcance));
+  if (!alcance) return negar(res, "No tiene permiso para ver los reportes del hospital.");
+  res.json({ alcance, barras: barrasResumen(alcance, req.usuario) });
 });
 
 app.get("/api/reportes/export", exigirSesion, (req, res) => {

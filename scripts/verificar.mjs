@@ -88,6 +88,9 @@ try {
   verificar(turnoAjeno.status === 200 && turnoAjeno.data.turno.pacienteId === 2, "IDOR de turno en modo vulnerable");
   const facturaAjena = await llamar("/api/facturas/202", { token: tokens.ana });
   verificar(facturaAjena.status === 200, "IDOR de factura en modo vulnerable");
+  const resumen = await llamar("/api/reportes/resumen", { token: tokens.ana });
+  const criticos = resumen.data.barras?.find((barra) => barra.etiqueta === "Críticos");
+  verificar(resumen.status === 200 && criticos?.valor === 1, "el gráfico vulnerable cuenta los casos críticos del hospital");
   const exportAjena = await llamar("/api/reportes/export?pacienteId=3", { token: tokens.ana });
   verificar(exportAjena.status === 200 && exportAjena.data.alcance === "completo" && exportAjena.data.historias && exportAjena.data.facturas, "la exportación vulnerable no recorta el alcance");
 
@@ -154,7 +157,18 @@ try {
   const exportAjenaSegura = await llamar("/api/reportes/export?pacienteId=3", { token: tokens.ana });
   verificar(exportAjenaSegura.status === 403, "Ana no exporta a otra paciente");
   const exportPropia = await llamar("/api/reportes/export?pacienteId=1", { token: tokens.ana });
-  verificar(exportPropia.status === 200 && exportPropia.data.alcance === "propio", "Ana exporta lo propio");
+  verificar(exportPropia.status === 403, "un paciente no exporta reportes del hospital");
+  verificar((await llamar("/api/reportes/resumen", { token: tokens.ana })).status === 403, "un paciente no ve el gráfico del hospital");
+  const resumenMedica = await llamar("/api/reportes/resumen", { token: tokens.molina });
+  verificar(
+    resumenMedica.status === 200 && resumenMedica.data.barras.every((barra) => barra.etiqueta !== "Facturas pendientes"),
+    "el gráfico de la médica no incluye facturas",
+  );
+  const resumenAdmin = await llamar("/api/reportes/resumen", { token: tokens.carlos });
+  verificar(
+    resumenAdmin.status === 200 && resumenAdmin.data.alcance === "facturacion" && resumenAdmin.data.barras.every((barra) => barra.etiqueta !== "Críticos"),
+    "el gráfico de administración no incluye casos críticos",
+  );
 
   verificar((await llamar("/api/pacientes/2/historia", { token: tokens.molina })).status === 403, "la médica no lee pacientes fuera de su asignación");
   const maria = await llamar("/api/pacientes/3/historia", { token: tokens.molina });

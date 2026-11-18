@@ -59,6 +59,7 @@ function crearSemilla() {
         medicoId: 3,
         fecha: "2026-03-12",
         diagnostico: "Hipertensión leve",
+        gravedad: "estable",
         notas: "Control anual. PA 138/88. Se indica dieta hiposódica y control en 6 meses.",
       },
       {
@@ -67,6 +68,7 @@ function crearSemilla() {
         medicoId: 9,
         fecha: "2026-06-02",
         diagnostico: "Lumbalgia aguda",
+        gravedad: "critico",
         notas: "Dolor lumbar de 10 días. Antecedente de hernia de disco en 2024. Se indica reposo y analgesia.",
       },
       {
@@ -75,6 +77,7 @@ function crearSemilla() {
         medicoId: 3,
         fecha: "2026-09-18",
         diagnostico: "Embarazo de 12 semanas",
+        gravedad: "seguimiento",
         notas: "Control prenatal. Embarazo único, sin antecedentes de riesgo. Próxima ecografía en 4 semanas.",
       },
     ],

@@ -77,8 +77,8 @@ La tabla es el modo seguro. En modo vulnerable, una sesión alcanza para leer o 
 
 | Rol | Pantallas del menú | En modo seguro puede | Queda fuera |
 | --- | --- | --- | --- |
-| Paciente | Inicio, Historias clínicas, Resultados, Turnos, Facturación, Reportes, Mi perfil | Ver su historia y sus resultados, ver y reprogramar sus turnos, ver y pagar sus facturas, exportar lo propio (clínica y facturas) | Datos de otra persona, escribir diagnósticos, usuarios |
-| Médica / médico | Las del paciente, sin Facturación | Ver y escribir la historia de sus pacientes asignados, ver sus resultados, ver y reprogramar los turnos de su agenda, exportar solo la clínica de esos pacientes | Facturas, pacientes que no tiene asignados, usuarios |
+| Paciente | Inicio, Historias clínicas, Resultados, Turnos, Facturación, Mi perfil | Ver su historia y sus resultados, ver y reprogramar sus turnos, ver y pagar sus facturas | Reportes del hospital, datos de otra persona, escribir diagnósticos, usuarios |
+| Médica / médico | Las del paciente, más Reportes, sin Facturación | Ver y escribir la historia de sus pacientes asignados, ver sus resultados, ver y reprogramar los turnos de su agenda, exportar la clínica de esos pacientes | Facturas, pacientes que no tiene asignados, usuarios |
 | Administración | Inicio, Turnos, Facturación, Reportes, Mi perfil | Ver y reprogramar cualquier turno, ver y pagar cualquier factura, exportar las facturas de cualquier paciente | Historias, resultados, diagnósticos, estudios, usuarios |
 | Sistemas | Inicio, Mi perfil, Administración | Listar usuarios, cambiarles el rol y el estado, leer la auditoría | Historias, resultados, turnos, facturas, reportes |
 
@@ -114,7 +114,8 @@ En vulnerable la función termina ahí: hay sesión y el número alcanza. En seg
 | Escribir un diagnóstico | `puedeEscribirClinico` | Solo la médica, y solo sobre una paciente asignada. |
 | Ver o reprogramar un turno | `puedeVerTurno`, `puedeReprogramarTurno` | Paciente: el suyo. Médica: si ella es la profesional. Administración: cualquiera. Sistemas: no. |
 | Ver o pagar una factura | `puedeVerFactura` | Paciente: la suya. Administración: cualquiera. Médica y sistemas: no. |
-| Exportar un paciente | `alcanceExportacion` | Paciente: lo propio. Médica: clínica de sus pacientes, sin facturas. Administración: facturas, sin clínica. Sistemas: nada. |
+| Gráfico del hospital | `alcanceResumen` | Paciente: no. Médica: clínica de sus pacientes, sin facturas. Administración: turnos y facturas, sin casos críticos. Sistemas: no. |
+| Exportar un paciente | `alcanceExportacion` | Es un reporte del hospital. Paciente: no. Médica: clínica de sus pacientes, sin facturas. Administración: facturas, sin clínica. Sistemas: no. |
 | Usuarios y auditoría | `puedeAdministrarUsuarios` | Solo si `rol === "sistemas"`. |
 | Cambiar el perfil | `PUT /api/perfil`, en `server/index.js` | Solo el campo `nombre`. Si llega `rol`, `activo` u otro campo, responde 400 y no guarda nada. |
 | Listar cuentas de prueba | `GET /api/internal/debug/users` | Responde 404. |
@@ -159,14 +160,14 @@ El impacto es el que describe la propuesta: filtración de datos de salud, modif
 
 ### Exportación con un filtro de paciente
 
-`GET /api/reportes/export?pacienteId=` arma un reporte del número que llegue en la consulta.
+`#/reportes` muestra un gráfico de barras del hospital: pacientes, casos críticos, en seguimiento, estudios, turnos y facturas pendientes. `GET /api/reportes/export?pacienteId=` arma el informe de la persona cuyo número va en la consulta. No está en el menú del paciente. La ruta igual existe: `#/reportes/3`.
 
-En modo vulnerable el alcance es `completo`: diagnósticos, estudios y facturas. En modo seguro `alcanceExportacion` recorta:
+En modo vulnerable el gráfico cuenta a todo el hospital y el alcance del informe es `completo`: diagnósticos, estudios y facturas, aunque quien pide sea un paciente. En modo seguro `alcanceResumen` y `alcanceExportacion` recortan:
 
-- paciente: solo el propio, clínica y sus facturas;
-- médica: solo clínica de sus pacientes, sin facturas;
-- administración: facturas de cualquier paciente, sin diagnósticos ni estudios;
-- sistemas: sin exportación.
+- paciente: sin gráfico y sin exportación;
+- médica: gráfico clínico de sus pacientes, sin facturas; el informe tampoco lleva facturas;
+- administración: gráfico de turnos y facturas, sin casos críticos; el informe es solo facturación;
+- sistemas: sin gráfico y sin exportación.
 
 ### Endpoint de prueba
 

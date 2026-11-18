@@ -243,6 +243,13 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--lin
 .escenarios { display: flex; flex-direction: column; gap: 24px; }
 .pie { margin-top: 28px; color: var(--muted); font-size: 0.85rem; }
 .card-bloqueo { border-color: #efc7be; }
+.barras { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.barra { display: grid; grid-template-columns: 11rem 1fr 2rem; gap: 12px; align-items: center; }
+.barra-etiqueta { font-size: 0.95rem; }
+.barra-pista { height: 16px; background: #efe8de; border-radius: 999px; overflow: hidden; }
+.barra-valor { display: block; height: 100%; background: var(--teal); border-radius: 999px; }
+.barra.critica .barra-valor { background: var(--danger); }
+.barra-numero { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
 
 @media (max-width: 860px) {
   .login, .app { grid-template-columns: 1fr; }
@@ -259,4 +266,5 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--lin
   .topbar { padding: 14px 18px; align-items: flex-start; flex-direction: column; }
   .quien { margin-left: 0; width: 100%; justify-content: space-between; }
   .banda { margin-inline: 18px; }
+  .barra { grid-template-columns: 8.5rem 1fr 2rem; gap: 8px; }
 }
