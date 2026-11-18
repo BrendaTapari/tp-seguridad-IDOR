@@ -115,7 +115,7 @@ Códigos HTTP observados con Ana Paz:
 
 Los botones ejecutan las mismas peticiones que se pueden hacer a mano. Sirven para mostrar que **el atacante controla el cliente**.
 
-- **Cambiar el identificador en la URL (V11).** En *Historias clínicas*, usar **Abrir por número de paciente** con `3`, o escribir `#/historias/3` en la barra de direcciones. Lo mismo con `#/resultados/3`, `#/turnos/102` y `#/facturas/202`.
+- **Cambiar el identificador en la URL (V11).** En la barra de direcciones, reemplazar el número: `#/historias/3`, `#/resultados/3`, `#/turnos/102`, `#/facturas/202` o `#/reportes/3`.
 - **Ver la petición real.** Abrir las DevTools (**F12**) → **Network**, y repetir cualquier prueba: aparece `GET /api/pacientes/3/historia` con el identificador a la vista.
 - **Cambiar el rol del navegador (V9).** En la barra lateral, el selector **Rol guardado en el navegador** modifica `localStorage.mediportal_rol`. También se puede ver en **Application** (Chrome) o **Storage** (Firefox) → **Local Storage**.
 - **Probar con otro rol.** Entrar como la Dra. Molina, Carlos o Nora para ver la **separación de funciones**: la médica no ve facturas, administración no ve historias y sistemas no ve datos clínicos.

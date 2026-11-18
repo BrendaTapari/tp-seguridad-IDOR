@@ -1,10 +1,10 @@
 # MediPortal — Broken Access Control
 
-Trabajo práctico de seguridad. MediPortal es el portal ficticio de una red de clínicas: pacientes consultan turnos, resultados e historia clínica; los médicos registran diagnósticos; administración gestiona agenda y facturación; sistemas administra usuarios y roles.
+Trabajo práctico de seguridad. MediPortal es el portal ficticio de una red de clínicas, en el cual el pacientes consultan turnos, resultados e historia clínica; los médicos registran diagnósticos; administración gestiona agenda y facturación; sistemas administra usuarios y roles.
 
 El valor del sistema depende de que cada persona vea solo lo que le corresponde. El laboratorio muestra la falla cuando esa decisión no está en el servidor, y la corrección cuando sí lo está.
 
-Los datos son ficticios. El sistema corre en la máquina local y no está pensado para publicar información real.
+Los datos son ficticios. El sistema corre de firna local.
 
 ## Tecnologías
 
@@ -42,9 +42,30 @@ La clave de todas las cuentas es `portal`.
 | Carlos Ruiz | Administración | carlos.ruiz@mediportal.test |
 | Nora Vidal | Sistemas | nora.vidal@mediportal.test |
 
-María Soto es la paciente nº 3. No tiene usuario del portal, pero tiene historia, un estudio y una factura. Su historia describe un control prenatal: sirve para ver el impacto de leer un recurso ajeno.
+## Los roles
 
-La Dra. Molina no atiende a Lucas. El turno 102 y la factura 202 son de Lucas. El turno 101 y la factura 201 son de Ana. El archivo de resultado 3 es la ecografía de María.
+El permiso lo decide el rol de la sesión: el de la cuenta con la que entraste. Esas reglas están en `server/autorizacion.js`. El menú se arma aparte, en `public/app.js` (la lista `ENLACES`), y solo elige qué enlaces se dibujan.
+
+El selector **Rol guardado en el navegador**, en la barra lateral, cambia ese menú. El servidor sigue usando el rol de la sesión. Si no coinciden, el portal lo avisa, y **Usar el rol del servidor en el menú** los vuelve a igualar. Esa diferencia es la prueba de [El frontend no autoriza](#el-frontend-no-autoriza).
+
+**Administración** nombra dos cosas distintas. El rol Administración (`administrativo`, Carlos Ruiz) gestiona agenda y facturas. El ítem de menú Administración (`#/admin`) es la pantalla de usuarios y roles, y en el menú solo aparece para Sistemas.
+
+La tabla es el modo seguro. En modo vulnerable, una sesión alcanza para leer o modificar un recurso si se conoce el número, aunque el menú no muestre la pantalla.
+
+| Rol | Pantallas del menú | En modo seguro puede | Queda fuera |
+| --- | --- | --- | --- |
+| Paciente | Inicio, Historias clínicas, Resultados, Turnos, Facturación, Reportes, Mi perfil | Ver su historia y sus resultados, ver y reprogramar sus turnos, ver y pagar sus facturas, exportar lo propio (clínica y facturas) | Datos de otra persona, escribir diagnósticos, usuarios |
+| Médica / médico | Las del paciente, sin Facturación | Ver y escribir la historia de sus pacientes asignados, ver sus resultados, ver y reprogramar los turnos de su agenda, exportar solo la clínica de esos pacientes | Facturas, pacientes que no tiene asignados, usuarios |
+| Administración | Inicio, Turnos, Facturación, Reportes, Mi perfil | Ver y reprogramar cualquier turno, ver y pagar cualquier factura, exportar las facturas de cualquier paciente | Historias, resultados, diagnósticos, estudios, usuarios |
+| Sistemas | Inicio, Mi perfil, Administración | Listar usuarios, cambiarles el rol y el estado, leer la auditoría | Historias, resultados, turnos, facturas, reportes |
+
+La Guía del práctico está en el menú de los cuatro roles. Es del laboratorio, no de la clínica.
+
+El rol solo no alcanza: también importa de quién es el recurso.
+
+- Ana es la paciente 1 y Lucas es la 2. Cada uno opera ese `pacienteId`.
+- La Dra. Molina atiende a Ana y a María Soto. No atiende a Lucas. El turno 102 y la factura 202 son de Lucas, con el Dr. Herrera, que no tiene usuario del portal. El turno 101 y la factura 201 son de Ana.
+- María Soto es la paciente 3. No tiene correo para entrar. Tiene historia, la ecografía (resultado 3), el turno 103 y la factura 203. Su historia es un control prenatal: es el recurso ajeno que pide la guía.
 
 ```bash
 npm run verificar
@@ -57,7 +78,7 @@ Ese comando recorre la API en los dos modos y falla si un control no responde co
 El interruptor **Vulnerable / Seguro** cambia la política del servidor. No es una protección mágica: las dos políticas están en `server/autorizacion.js` y las rutas de `server/index.js` llaman a esas funciones.
 
 - **Vulnerable:** si hay sesión, se puede leer o modificar un recurso conociendo su número. El perfil copia campos de más. Las rutas de administración no miran el rol. El endpoint de prueba responde.
-- **Seguro:** cada recurso se autoriza por rol y por pertenencia. El perfil solo acepta el nombre. Administración exige el rol `sistemas`. El endpoint de prueba responde 404.
+- **Seguro:** cada recurso se autoriza por rol y por pertenencia. El perfil solo acepta el nombre. La pantalla de usuarios exige el rol `sistemas`. El endpoint de prueba responde 404.
 
 Las listas del inicio están filtradas en los dos modos. El portal se ve bien y el fallo queda en el acceso directo, que es la forma habitual de esta falla: la pantalla lista “lo mío”, pero `GET /api/pacientes/3/historia` no pregunta de quién es.
 
@@ -134,7 +155,7 @@ El menú se arma con `localStorage.mediportal_rol`, no con una decisión del ser
 
 `#/admin` se puede abrir escribiendo la ruta aunque el enlace no esté. En modo vulnerable la API responde 200. En modo seguro responde 403 y la pantalla muestra el rechazo: la vista se abrió, el dato no.
 
-Los números de paciente, archivo, turno y factura están en el hash (`#/historias/3`, `#/resultados/3`) y en la solicitud (`GET /api/pacientes/3/historia`). Hay un campo para abrir por número en cada sección. Cambiar ese número es la prueba. Ocultar el enlace o no dibujar el botón sería usabilidad, no un control: por eso el modo vulnerable igual muestra el formulario de diagnóstico.
+Los números de paciente, archivo, turno y factura están en el hash (`#/historias/3`, `#/resultados/3`, `#/reportes/3`) y en la solicitud (`GET /api/pacientes/3/historia`). La prueba es cambiar ese número en la barra de direcciones. Ocultar el enlace o no dibujar el botón sería usabilidad, no un control: por eso el modo vulnerable igual muestra el formulario de diagnóstico.
 
 La sesión viaja en `Authorization: Bearer`, no en una cookie. El servidor no lee el rol del navegador.
 

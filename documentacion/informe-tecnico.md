@@ -198,9 +198,9 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Qué es.** Los números de paciente, archivo, turno y factura viajan en la URL (`#/historias/3`) y en la solicitud de red (`GET /api/pacientes/3/historia`). El usuario los puede observar y cambiar.
 
-**Dónde está.** [`app.js:131-135`](../public/app.js#L131-L135) (lee el ID de la URL), [`app.js:244-254`](../public/app.js#L244-L254) (`buscarId`, el campo "Abrir por número") y [`app.js:340-342`](../public/app.js#L340-L342) (arma la petición con ese ID).
+**Dónde está.** `parseRoute` en `public/app.js` lee el número del hash. Las vistas de historia, resultado, turno, factura y reporte arman la petición con ese número. No hay un campo para elegirlo: se cambia en la barra de direcciones.
 
-**Explotación.** Es el vehículo de V1 a V4: cambiar el número en la URL o en el formulario "Abrir por número".
+**Explotación.** Es el vehículo de V1 a V4: cambiar el número en la URL (`#/historias/3`, `#/resultados/3`, `#/turnos/102`, `#/facturas/202`, `#/reportes/3`).
 
 **Corrección.** Un ID visible no es un fallo **si el servidor autoriza** (V1 a V4). Usar identificadores no secuenciales (UUID) puede dificultar la enumeración, pero es defensa en profundidad y **nunca sustituye** la autorización.
 

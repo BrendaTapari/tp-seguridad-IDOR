@@ -198,16 +198,18 @@ function shell(contenido) {
         <label class="rol-local">
           Rol guardado en el navegador
           <select data-rol-ui>${opciones}</select>
-          <small>Esto solo cambia el menú. El servidor sigue usando el rol de la sesión: ${esc(etiquetaRol(state.user.rol))}.</small>
+          <small>Esto solo cambia el menú. El servidor sigue usando el rol de la sesión: <strong>${esc(etiquetaRol(state.user.rol))}</strong>.</small>
         </label>
       </aside>
       <div class="contenido">
         <header class="topbar">
           ${controlModo()}
           <div class="quien">
-            <strong>${esc(state.user.nombre)}</strong>
-            <span>${esc(state.user.email)}</span>
-            <button type="button" class="btn-texto" data-accion="salir">Cerrar sesión</button>
+            <div class="quien-datos">
+              <strong>${esc(state.user.nombre)}</strong>
+              <span>${esc(state.user.email)}</span>
+            </div>
+            <button type="button" class="btn-secundario" data-accion="salir">Cerrar sesión</button>
           </div>
         </header>
         ${bandaModo()}
@@ -239,18 +241,6 @@ function bloqueado(metodo, path, status, data) {
       <p>${esc(data.error || "Sin permiso")}</p>
       <p class="nota">La pantalla del navegador se abrió igual. La autorización tiene que decidirla el servidor, no la ruta ni el menú.</p>
     </section>`;
-}
-
-function buscarId(titulo, base, ejemplo) {
-  return `
-    <form class="card buscar" data-form="ir" data-base="${base}">
-      <h2>${titulo}</h2>
-      <div class="fila">
-        <input name="id" inputmode="numeric" placeholder="Número" required>
-        <button class="btn" type="submit">Abrir</button>
-      </div>
-      <p class="nota">${ejemplo}</p>
-    </form>`;
 }
 
 function vistaLogin() {
@@ -332,9 +322,8 @@ async function vistaHistorias() {
     </a>`).join("");
   return `
     <h1>Historias clínicas</h1>
-    <p class="lead">La lista sale filtrada por el rol. El fallo aparece al pedir un paciente por su número.</p>
-    <div class="grilla">${items || `<p class="nota">No hay historias dentro de tu alcance.</p>`}</div>
-    ${buscarId("Abrir por número de paciente", "#/historias/", "Ana es la paciente 1, Lucas el 2 y María Soto la 3. María no tiene usuario del portal: igual tiene historia clínica.")}`;
+    <p class="lead">La lista sale filtrada por el rol. El número de paciente está en la dirección, después de <code>#/historias/</code>.</p>
+    <div class="grilla">${items || `<p class="nota">No hay historias dentro de tu alcance.</p>`}</div>`;
 }
 
 async function vistaHistoria(id) {
@@ -374,9 +363,8 @@ async function vistaResultados() {
     </a>`).join("");
   return `
     <h1>Resultados</h1>
-    <p class="lead">Cada estudio tiene un número de archivo. Ese número es el identificador directo.</p>
-    <div class="grilla">${items || `<p class="nota">No hay resultados dentro de tu alcance.</p>`}</div>
-    ${buscarId("Abrir por número de archivo", "#/resultados/", "El hemograma de Ana es el archivo 1, la resonancia de Lucas el 2 y la ecografía de María el 3.")}`;
+    <p class="lead">El número de archivo está en la dirección, después de <code>#/resultados/</code>.</p>
+    <div class="grilla">${items || `<p class="nota">No hay resultados dentro de tu alcance.</p>`}</div>`;
 }
 
 async function vistaResultado(id) {
@@ -404,14 +392,13 @@ async function vistaTurnos() {
     </tr>`).join("");
   return `
     <h1>Turnos</h1>
-    <p class="lead">La reprogramación usa el número de turno. En el modo vulnerable no importa de quién sea.</p>
+    <p class="lead">El número de turno está en la dirección, después de <code>#/turnos/</code>.</p>
     <div class="card tabla-wrap">
       <table>
         <thead><tr><th>Nº</th><th>Cuándo</th><th>Paciente</th><th>Profesional</th><th>Motivo</th><th>Estado</th></tr></thead>
         <tbody>${filas || `<tr><td colspan="6">No hay turnos dentro de tu alcance.</td></tr>`}</tbody>
       </table>
-    </div>
-    ${buscarId("Abrir por número de turno", "#/turnos/", "101 es de Ana, 102 de Lucas y 103 de María.")}`;
+    </div>`;
 }
 
 async function vistaTurno(id) {
@@ -444,13 +431,13 @@ async function vistaFacturas() {
     </tr>`).join("");
   return `
     <h1>Facturación</h1>
+    <p class="lead">El número de factura está en la dirección, después de <code>#/facturas/</code>.</p>
     <div class="card tabla-wrap">
       <table>
         <thead><tr><th>Nº</th><th>Paciente</th><th>Concepto</th><th>Importe</th><th>Estado</th></tr></thead>
         <tbody>${filas || `<tr><td colspan="5">No hay facturas dentro de tu alcance.</td></tr>`}</tbody>
       </table>
-    </div>
-    ${buscarId("Abrir por número de factura", "#/facturas/", "201 es de Ana, 202 de Lucas y 203 de María.")}`;
+    </div>`;
 }
 
 async function vistaFactura(id) {
@@ -472,18 +459,23 @@ async function vistaFactura(id) {
     </article>`;
 }
 
-function vistaReportes() {
-  const sugerido = state.user.pacienteId || 3;
+async function vistaReportes(id) {
+  if (!id) {
+    const propio = state.user.pacienteId
+      ? `<p><a href="#/reportes/${state.user.pacienteId}">Abrir mi reporte</a></p>`
+      : "";
+    return `
+      <h1>Exportar reporte</h1>
+      <p class="lead">El paciente va en la dirección, después de <code>#/reportes/</code>.</p>
+      ${propio}`;
+  }
+  const path = `/api/reportes/export?pacienteId=${id}`;
+  const res = await api(path);
+  if (!res.ok) return bloqueado("GET", path, res.status, res.data);
   return `
-    <h1>Exportar reporte</h1>
-    <p class="lead">El filtro viaja como <code>pacienteId</code>. En el modo vulnerable el servidor no recorta el alcance: devuelve clínica y facturación del número pedido.</p>
-    <form class="card" data-form="exportar">
-      <label class="campo">Número de paciente
-        <input name="pacienteId" inputmode="numeric" value="${sugerido}" required>
-      </label>
-      <button class="btn" type="submit">Exportar</button>
-      <div id="exportar-resultado"></div>
-    </form>`;
+    ${solicitud("GET", path, res.status)}
+    <h1>Reporte</h1>
+    <pre>${esc(JSON.stringify(res.data, null, 2))}</pre>`;
 }
 
 function vistaPerfil() {
@@ -593,7 +585,6 @@ const VISTAS = {
   resultados: vistaResultados,
   turnos: vistaTurnos,
   facturas: vistaFacturas,
-  reportes: vistaReportes,
   perfil: vistaPerfil,
   admin: vistaAdmin,
   guia: vistaGuia,
@@ -631,6 +622,7 @@ async function render() {
     else if (route.name === "resultados" && route.id) vista = vistaResultado(route.id);
     else if (route.name === "turnos" && route.id) vista = vistaTurno(route.id);
     else if (route.name === "facturas" && route.id) vista = vistaFactura(route.id);
+    else if (route.name === "reportes") vista = vistaReportes(route.id);
     else vista = (VISTAS[route.name] || vistaInicio)();
     html = shell(await vista);
   }
@@ -798,12 +790,6 @@ document.addEventListener("submit", async (evento) => {
     location.hash = "#/inicio";
     return;
   }
-  if (form.dataset.form === "ir") {
-    const id = String(datos.get("id") || "").trim();
-    if (!/^[1-9]\d*$/.test(id)) return;
-    location.hash = `${form.dataset.base}${id}`;
-    return;
-  }
   if (form.dataset.form === "diagnostico") {
     const res = await api(`/api/pacientes/${form.dataset.paciente}/historia`, {
       method: "POST",
@@ -826,13 +812,6 @@ document.addEventListener("submit", async (evento) => {
       texto: res.ok ? "Turno reprogramado." : (res.data.error || "No se pudo reprogramar."),
     };
     render();
-    return;
-  }
-  if (form.dataset.form === "exportar") {
-    const path = `/api/reportes/export?pacienteId=${encodeURIComponent(datos.get("pacienteId"))}`;
-    const res = await api(path);
-    const caja = document.getElementById("exportar-resultado");
-    if (caja) caja.innerHTML = bloqueApi("GET", path, res.status, res.data);
     return;
   }
   if (form.dataset.form === "perfil") {
