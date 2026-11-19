@@ -70,7 +70,7 @@ Referencias de ubicación: archivo y líneas de la versión del repositorio. La 
 
 **Dónde está.**
 - Política: [`autorizacion.js:7-12`](../server/autorizacion.js#L7-L12) (`puedeLeerClinico`, línea vulnerable: 8) y [`autorizacion.js:14-17`](../server/autorizacion.js#L14-L17) (`puedeEscribirClinico`).
-- Rutas: [`index.js:204-216`](../server/index.js#L204-L216) (`GET /api/pacientes/:id/historia`) y [`index.js:218-241`](../server/index.js#L218-L241) (`POST`, registrar diagnóstico).
+- Rutas: [`index.js:206-218`](../server/index.js#L206-L218) (`GET /api/pacientes/:id/historia`) y [`index.js:220-243`](../server/index.js#L220-L243) (`POST`, registrar diagnóstico).
 
 **Explotación.** Ana (paciente 1) pide `/api/pacientes/3/historia` y recibe el control prenatal de María Soto, con su DNI. Con `POST` un paciente podría incluso **escribir** un diagnóstico en una historia ajena.
 
@@ -90,17 +90,17 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Qué es.** Igual que V1, pero el identificador es el **número de archivo** del estudio.
 
-**Dónde está.** [`autorizacion.js:7-12`](../server/autorizacion.js#L7-L12) (reutiliza `puedeLeerClinico` con el dueño del resultado) y [`index.js:247-258`](../server/index.js#L247-L258) (`GET /api/resultados/:id`).
+**Dónde está.** [`autorizacion.js:7-12`](../server/autorizacion.js#L7-L12) (reutiliza `puedeLeerClinico` con el dueño del resultado) y [`index.js:249-260`](../server/index.js#L249-L260) (`GET /api/resultados/:id`).
 
 **Explotación.** Ana pide `/api/resultados/3` y obtiene la ecografía obstétrica de María.
 
-**Corrección.** La autorización se calcula con el `pacienteId` **dueño del archivo**, no con el número recibido: `puedeLeerClinico(req.usuario, resultado.pacienteId, lab.modo)` ([`index.js:251`](../server/index.js#L251)). Conocer el número de archivo deja de alcanzar.
+**Corrección.** La autorización se calcula con el `pacienteId` **dueño del archivo**, no con el número recibido: `puedeLeerClinico(req.usuario, resultado.pacienteId, lab.modo)` ([`index.js:253`](../server/index.js#L253)). Conocer el número de archivo deja de alcanzar.
 
 ---
 
 ### V3 · IDOR en turnos
 
-**Dónde está.** [`autorizacion.js:19-33`](../server/autorizacion.js#L19-L33) (`puedeVerTurno`, `puedeReprogramarTurno`) y rutas [`index.js:264-272`](../server/index.js#L264-L272) (`GET`) y [`index.js:274-289`](../server/index.js#L274-L289) (`PATCH`).
+**Dónde está.** [`autorizacion.js:19-33`](../server/autorizacion.js#L19-L33) (`puedeVerTurno`, `puedeReprogramarTurno`) y rutas [`index.js:266-274`](../server/index.js#L266-L274) (`GET`) y [`index.js:276-291`](../server/index.js#L276-L291) (`PATCH`).
 
 **Explotación.** Ana lee el turno 102 de Lucas y además **cambia su fecha** (`PATCH`), con lo que se modifica el registro de otra persona.
 
@@ -112,7 +112,7 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 ### V4 · IDOR en facturas
 
-**Dónde está.** [`autorizacion.js:35-40`](../server/autorizacion.js#L35-L40) (`puedeVerFactura`) y rutas [`index.js:295-303`](../server/index.js#L295-L303) (`GET`) y [`index.js:305-317`](../server/index.js#L305-L317) (`POST /:id/pagar`).
+**Dónde está.** [`autorizacion.js:35-40`](../server/autorizacion.js#L35-L40) (`puedeVerFactura`) y rutas [`index.js:297-305`](../server/index.js#L297-L305) (`GET`) y [`index.js:307-319`](../server/index.js#L307-L319) (`POST /:id/pagar`).
 
 **Explotación.** Ana lee la factura 202 (resonancia de Lucas, $95.000) y **registra su pago**, lo que modifica un comprobante ajeno.
 
@@ -126,7 +126,7 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Qué es.** El reporte acepta un filtro de paciente (`?pacienteId=`) y confía en él para decidir *de quién* son los datos.
 
-**Dónde está.** [`autorizacion.js:42-48`](../server/autorizacion.js#L42-L48) (`alcanceExportacion`) y [`index.js:319-337`](../server/index.js#L319-L337).
+**Dónde está.** [`autorizacion.js:49-55`](../server/autorizacion.js#L49-L55) (`alcanceExportacion`) y [`index.js:353-371`](../server/index.js#L353-L371).
 
 **Explotación.** `GET /api/reportes/export?pacienteId=3` devuelve alcance `completo` (diagnósticos, estudios y facturas de María).
 
@@ -138,11 +138,11 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Qué es.** Una ruta de diagnóstico que debió retirarse antes de publicar.
 
-**Dónde está.** [`index.js:339-360`](../server/index.js#L339-L360) (`GET /api/internal/debug/users`). Está registrada **sin** `exigirSesion` (compárese con [`index.js:55`](../server/index.js#L55)).
+**Dónde está.** [`index.js:373-394`](../server/index.js#L373-L394) (`GET /api/internal/debug/users`). Está registrada **sin** `exigirSesion` (compárese con [`index.js:57`](../server/index.js#L57)).
 
 **Explotación.** Sin iniciar sesión, devuelve nombre, correo, rol y estado de todas las cuentas. Sirve para elegir objetivos de ataque.
 
-**Corrección.** En modo seguro responde `404`, como si no existiera ([`index.js:340-342`](../server/index.js#L340-L342)). La solución real es **no publicarla** o restringirla a desarrollo. En el laboratorio no devuelve claves ni hashes, para no volver trivial el resto de las pruebas.
+**Corrección.** En modo seguro responde `404`, como si no existiera ([`index.js:374-376`](../server/index.js#L374-L376)). La solución real es **no publicarla** o restringirla a desarrollo. En el laboratorio no devuelve claves ni hashes, para no volver trivial el resto de las pruebas.
 
 ---
 
@@ -150,7 +150,7 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Qué es.** El endpoint de actualización de perfil copia al usuario **todos** los campos del cuerpo, sin lista de campos permitidos.
 
-**Dónde está.** [`index.js:146-197`](../server/index.js#L146-L197). El copiado vulnerable está en [`index.js:180-186`](../server/index.js#L180-L186); la lista blanca, en [`index.js:42`](../server/index.js#L42) (`CAMPOS_PERFIL`) y [`index.js:156-166`](../server/index.js#L156-L166).
+**Dónde está.** [`index.js:148-199`](../server/index.js#L148-L199). El copiado vulnerable está en [`index.js:182-188`](../server/index.js#L182-L188); la lista blanca, en [`index.js:44`](../server/index.js#L44) (`CAMPOS_PERFIL`) y [`index.js:158-168`](../server/index.js#L158-L168).
 
 **Explotación.** El formulario real solo envía `nombre`, pero el servidor acepta más. Con `{ "nombre": "Ana Paz", "rol": "sistemas", "activo": true }`, Ana se convierte en **sistemas**. También podría enviar `activo: false` para inutilizar una cuenta, o `pacienteId` para ver la clínica de otra persona.
 
@@ -162,11 +162,11 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Qué es.** Rutas administrativas que solo verifican que haya sesión, sin comprobar el rol.
 
-**Dónde está.** [`autorizacion.js:50-53`](../server/autorizacion.js#L50-L53) (`puedeAdministrarUsuarios`) y rutas [`index.js:362-367`](../server/index.js#L362-L367) (listar), [`:369-374`](../server/index.js#L369-L374) (auditoría) y [`:376-394`](../server/index.js#L376-L394) (cambiar rol/estado).
+**Dónde está.** [`autorizacion.js:57-60`](../server/autorizacion.js#L57-L60) (`puedeAdministrarUsuarios`) y rutas [`index.js:396-401`](../server/index.js#L396-L401) (listar), [`:403-408`](../server/index.js#L403-L408) (auditoría) y [`:410-428`](../server/index.js#L410-L428) (cambiar rol/estado).
 
 **Explotación.** Ana lista todas las cuentas con `/api/admin/usuarios`, aunque el menú no le muestre Administración. Con `PATCH` podría desactivar a otro usuario o darse un rol superior.
 
-**Corrección.** `return usuario.rol === "sistemas";` ([`autorizacion.js:52`](../server/autorizacion.js#L52)). Se valida el rol **que conoce el servidor** en cada request.
+**Corrección.** `return usuario.rol === "sistemas";` ([`autorizacion.js:59`](../server/autorizacion.js#L59)). Se valida el rol **que conoce el servidor** en cada request.
 
 ---
 
@@ -186,11 +186,11 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 
 **Qué es.** `#/admin` existe aunque no esté en el menú. Quien escribe la ruta abre la pantalla.
 
-**Dónde está.** Enrutado por hash en [`app.js:131-135`](../public/app.js#L131-L135) y vista en [`app.js:509`](../public/app.js#L509) (`vistaAdmin`); la protección efectiva está en la API ([`index.js:362-367`](../server/index.js#L362-L367)).
+**Dónde está.** Enrutado por hash en [`app.js:120-124`](../public/app.js#L120-L124) y vista en [`app.js:484`](../public/app.js#L484) (`vistaAdmin`); la protección efectiva está en la API ([`index.js:396-401`](../server/index.js#L396-L401)).
 
 **Explotación.** En modo vulnerable, abrir `#/admin` muestra el panel completo con todos los usuarios.
 
-**Corrección.** En modo seguro la pantalla **se abre igual**, pero la API responde `403` y la vista muestra *"El servidor rechazó el acceso"* ([`app.js:234`](../public/app.js#L234)). La vista se abrió; **el dato no**.
+**Corrección.** En modo seguro la pantalla **se abre igual**, pero la API responde `403` y la vista muestra *"El servidor rechazó el acceso"* ([`app.js:205`](../public/app.js#L205)). La vista se abrió; **el dato no**.
 
 ---
 
@@ -220,7 +220,7 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 | Frontend · rutas administrativas accesibles por URL | V10 |
 | Frontend · identificadores expuestos en URL y solicitudes de red | V11 |
 | *"El frontend no es una barrera de seguridad, sino una capa de usabilidad"* | V8 + V9 + V10 (demostrado en el modo seguro) |
-| Trazabilidad sobre quién accede a cada información | Auditoría ([`index.js:72-74`](../server/index.js#L72-L74), vista de Sistemas) |
+| Trazabilidad sobre quién accede a cada información | Auditoría ([`index.js:74-76`](../server/index.js#L74-L76), vista de Sistemas) |
 
 ## 6. Contramedidas transversales
 
@@ -230,7 +230,7 @@ La autorización se decide **por recurso y por rol**; un rol que no está contem
 4. **Autorizar por pertenencia del recurso**, no por el identificador recibido.
 5. **Lista blanca de campos** en toda escritura (V7) y roles de escritura separados de los de perfil.
 6. **Separación de funciones.** Administración no ve historias; sistemas no ve datos clínicos ni facturas; el médico solo ve a sus pacientes.
-7. **Auditoría de decisiones**, permitidas y rechazadas, sin copiar el contenido clínico ([`index.js:72-74`](../server/index.js#L72-L74)). En modo seguro solo Sistemas la consulta.
+7. **Auditoría de decisiones**, permitidas y rechazadas, sin copiar el contenido clínico ([`index.js:74-76`](../server/index.js#L74-L76)). En modo seguro solo Sistemas la consulta.
 8. **Retirar endpoints de prueba** antes de publicar (V6).
 9. **No filtrar contenido en los rechazos:** el `403` no incluye datos del recurso.
 10. **Probar la autorización:** [`scripts/verificar.mjs`](../scripts/verificar.mjs) comprueba que el usuario A recibe `403` al pedir recursos del usuario B.
