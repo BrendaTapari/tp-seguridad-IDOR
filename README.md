@@ -60,12 +60,12 @@ El permiso lo decide el rol de la sesión: el de la cuenta con la que entraste. 
 
 El campo `rol` solo acepta estos valores:
 
-| Rol | Valor en el JSON |
-| --- | --- |
-| Paciente | `paciente` |
-| Médica / médico | `medico` |
-| Administración | `administrativo` |
-| Sistemas | `sistemas` |
+| Rol             | Valor en el JSON |
+| --------------- | ---------------- |
+| Paciente        | `paciente`       |
+| Médica / médico | `medico`         |
+| Administración  | `administrativo` |
+| Sistemas        | `sistemas`       |
 
 En modo vulnerable el servidor guarda `rol` y `activo`, y el menú pasa a ser el de ese rol. En modo seguro responde 400 y no guarda nada.
 

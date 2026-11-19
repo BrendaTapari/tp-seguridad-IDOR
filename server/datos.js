@@ -1,9 +1,15 @@
 import bcrypt from "bcryptjs";
 
 const CLAVE_DEMO = "portal";
+let hashDemo = null;
+
+function claveDemo() {
+  if (!hashDemo) hashDemo = bcrypt.hashSync(CLAVE_DEMO, 8);
+  return hashDemo;
+}
 
 function crearSemilla() {
-  const passwordHash = bcrypt.hashSync(CLAVE_DEMO, 8);
+  const passwordHash = claveDemo();
   const usuario = (datos) => ({ passwordHash, activo: true, pacienteId: null, ...datos });
 
   return {
@@ -142,7 +148,7 @@ function crearSemilla() {
   };
 }
 
-let semillaActual = null;
+let datosListos = false;
 export const store = {};
 
 export const lab = {
@@ -150,13 +156,13 @@ export const lab = {
 };
 
 export function init() {
-  if (semillaActual) return;
-  semillaActual = crearSemilla();
+  if (datosListos) return;
+  datosListos = true;
   restablecer();
 }
 
 export function restablecer() {
-  const copia = structuredClone(semillaActual);
+  const copia = structuredClone(crearSemilla());
   for (const clave of Object.keys(store)) delete store[clave];
   Object.assign(store, copia);
 }

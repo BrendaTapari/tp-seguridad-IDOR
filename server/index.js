@@ -80,6 +80,8 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "64kb" }));
 app.use("/api", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
   next();
 });
 
@@ -441,7 +443,11 @@ app.use((error, _req, res, next) => {
 });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.join(__dirname, "..", "public")));
+app.use(express.static(path.join(__dirname, "..", "public"), {
+  setHeaders(res) {
+    res.set("Cache-Control", "no-store");
+  },
+}));
 
 const esPrincipal = process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
 if (esPrincipal) {

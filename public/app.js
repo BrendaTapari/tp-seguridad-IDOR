@@ -94,6 +94,21 @@ function clearSession() {
   sessionStorage.removeItem("mp_user");
 }
 
+async function limpiarCacheNavegador() {
+  try {
+    if (window.caches?.keys) {
+      const claves = await caches.keys();
+      await Promise.all(claves.map((clave) => caches.delete(clave)));
+    }
+    if (navigator.serviceWorker?.getRegistrations) {
+      const registros = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registros.map((registro) => registro.unregister()));
+    }
+  } catch {
+    // Si el navegador no deja borrar el caché, el restablecimiento del servidor igual corre al recargar.
+  }
+}
+
 async function api(path, opts = {}) {
   const headers = { ...(opts.headers || {}) };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
@@ -103,7 +118,7 @@ async function api(path, opts = {}) {
     respuesta = await fetch(path, {
       method: opts.method || "GET",
       headers,
-      cache: "no-store",
+      cache: opts.cache || "no-store",
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
   } catch {
@@ -707,10 +722,12 @@ document.addEventListener("click", async (evento) => {
     return;
   }
   if (accion === "restablecer") {
-    await api("/api/lab/restablecer", { method: "POST", auth: false });
     state.guia = {};
-    state.aviso = { tipo: "ok", texto: "Datos y roles vueltos al estado inicial." };
-    render();
+    state.aviso = null;
+    await api("/api/lab/restablecer", { method: "POST", auth: false, cache: "reload" });
+    sessionStorage.setItem("mp_pendiente_reset", "1");
+    await limpiarCacheNavegador();
+    location.replace(`${location.pathname}?limpio=${Date.now()}${location.hash}`);
     return;
   }
   if (accion === "salir") {
@@ -812,5 +829,27 @@ window.addEventListener("hashchange", () => {
   render();
 });
 
-if (!location.hash) location.hash = state.user ? "#/inicio" : "#/login";
-else render();
+async function arranque() {
+  if (new URLSearchParams(location.search).has("limpio")) {
+    history.replaceState(null, "", `${location.pathname}${location.hash}`);
+  }
+  if (sessionStorage.getItem("mp_pendiente_reset") === "1") {
+    sessionStorage.removeItem("mp_pendiente_reset");
+    const res = await api("/api/lab/restablecer", { method: "POST", auth: false, cache: "reload" });
+    if (res.ok && state.token) {
+      const yo = await api("/api/auth/yo", { cache: "reload" });
+      if (yo.ok && yo.data.usuario) guardarUsuario(yo.data.usuario);
+    }
+    state.guia = {};
+    state.aviso = {
+      tipo: res.ok ? "ok" : "error",
+      texto: res.ok
+        ? "Datos y roles vueltos al estado inicial."
+        : (res.data.error || "No se pudieron restablecer los datos."),
+    };
+  }
+  if (!location.hash) location.hash = state.user ? "#/inicio" : "#/login";
+  else render();
+}
+
+arranque();
