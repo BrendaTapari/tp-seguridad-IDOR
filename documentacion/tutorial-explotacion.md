@@ -28,16 +28,21 @@ Abrir <http://localhost:3000>. Si el puerto está ocupado: `PORT=3100 npm start`
 | Nora Vidal | Sistemas | `nora.vidal@mediportal.test` |
 
 **Datos que se usan en las pruebas:**
-María Soto es la paciente n.º 3 (sin usuario). Es ajena a Ana y a Lucas.
-Turno **102** y factura **202** son de **Lucas**. Resultado (archivo) **3** es la ecografía de **María**.
+
+- Ana es la paciente 1 y Lucas es la 2. Cada uno opera ese número.
+- La Dra. Molina atiende a Ana y a María Soto. No atiende a Lucas.
+- El turno **101** y la factura **201** son de Ana. El turno **102** y la factura **202** son de Lucas, con el Dr. Herrera, que no tiene usuario del portal. El turno **103** y la factura **203** son de María.
+- María Soto es la paciente 3. No tiene correo para entrar. Tiene historia (control prenatal), la ecografía (resultado **3**), el turno 103 y la factura 203. Es el recurso ajeno que pide la guía.
 
 **Controles de la pantalla** (barra superior, visibles en todo momento):
 
 | Botón | Qué hace |
 |---|---|
-| **Vulnerable** | El servidor solo mira que haya sesión |
-| **Seguro** | El servidor autoriza cada recurso por rol y pertenencia |
-| **Restablecer datos** | Devuelve pacientes, turnos, facturas y roles al estado inicial |
+| **Vulnerable** | El servidor solo mira que haya sesión. Manda `POST /api/lab/modo` con `{ "modo": "vulnerable" }` |
+| **Seguro** | El servidor autoriza cada recurso por rol y pertenencia. Manda `{ "modo": "seguro" }` |
+| **Restablecer datos** | Devuelve pacientes, turnos, facturas y roles al estado inicial. No cierra la sesión |
+
+El modo es uno para todo el proceso: dos ventanas ven el mismo. Cambiarlo no deshace lo ya escrito. La cuenta y el menú siguen igual.
 
 > Todas las pruebas se hacen **como Ana Paz**. Es una paciente común: nada de lo que sigue debería estar a su alcance.
 
@@ -58,7 +63,7 @@ Activar **Vulnerable**. Hacer las pruebas **en este orden**: las últimas modifi
 | 2 | IDOR en un resultado | **Pedir resultado 3** | Conocer el n.º de archivo alcanza (V2) | `200`. Ecografía obstétrica de María |
 | 3 | IDOR en turnos | **Ver turno 102** | Lee el turno de Lucas (V3) | `200`. Turno de Lucas con el Dr. Herrera |
 | 4 | IDOR en facturas | **Ver factura 202** | Lee una factura ajena (V4) | `200`. Resonancia lumbar de Lucas, $95.000 |
-| 5 | Exportación sin alcance | **Exportar paciente 3** | El filtro del cliente decide de quién son los datos (V5) | `200`, alcance `completo`: historia, estudios y facturas de María |
+| 5 | Exportación sin alcance | **Exportar paciente 3** | El filtro del cliente decide de quién son los datos (V5). La misma pantalla, sin número (`#/reportes`), muestra el gráfico de todo el hospital | `200`, alcance `completo`: historia, estudios y facturas de María |
 | 6 | Endpoint de prueba | **Llamar sin sesión** | Una ruta olvidada responde sin autenticarse (V6) | `200`. Lista de cuentas, con aviso *"Endpoint de diagnóstico expuesto"* |
 | 7 | Autorización por función | **Listar usuarios** | La API admin no mira el rol (V8) | `200`. Lista completa de usuarios |
 | 8 | Autorización por función | **Abrir #/admin** | La pantalla oculta del menú se abre por URL (V10) | Se abre el panel con todos los usuarios y la auditoría |
@@ -84,7 +89,7 @@ El servidor ahora rechaza cada operación:
 | 2 | Pedir resultado 3 | `403` *"No tiene permiso para ver este resultado."* |
 | 3 | Ver turno 102 | `403` *"No tiene permiso para ver este turno."* |
 | 4 | Ver factura 202 | `403` *"No tiene permiso para ver esta factura."* |
-| 5 | Exportar paciente 3 | `403` *"No tiene permiso para exportar los datos de este paciente."* |
+| 5 | Exportar paciente 3 | `403` *"No tiene permiso para exportar los datos de este paciente."* Abrir `#/reportes` también da `403`: un paciente no ve el gráfico |
 | 6 | Llamar sin sesión | `404` *"No encontrado."* (el endpoint "se retiró") |
 | 7 | Listar usuarios | `403` *"No tiene permiso para administrar usuarios."* |
 | 8 | Abrir #/admin | La pantalla se abre pero muestra **"El servidor rechazó el acceso"** (`403`) |
@@ -105,6 +110,7 @@ Códigos HTTP observados con Ana Paz:
 | Turno ajeno: ver / reprogramar (`GET`, `PATCH /api/turnos/102`) | `200` / `200` | `403` / `403` |
 | Factura ajena: ver / pagar (`GET /api/facturas/202`, `POST …/pagar`) | `200` / `200` | `403` / `403` |
 | Exportación (`GET /api/reportes/export?pacienteId=3`) | `200` (completo) | `403` |
+| Gráfico del hospital (`GET /api/reportes/resumen`, ruta `#/reportes`) | `200` (todo el hospital) | `403` |
 | Endpoint de prueba sin sesión (`GET /api/internal/debug/users`) | `200` | `404` |
 | API de administración (`GET /api/admin/usuarios`) | `200` | `403` |
 | Perfil con `rol` y `activo` (`PUT /api/perfil`) | `200` (rol cambiado) | `400` |
@@ -113,20 +119,31 @@ Códigos HTTP observados con Ana Paz:
 
 Los botones ejecutan las mismas peticiones que se pueden hacer a mano. Sirven para mostrar que **el atacante controla el cliente**.
 
-- **Cambiar el identificador en la URL (V11).** En la barra de direcciones, reemplazar el número: `#/historias/3`, `#/resultados/3`, `#/turnos/102`, `#/facturas/202` o `#/reportes/3`.
-- **Ver la petición real.** Abrir las DevTools (**F12**) → **Network**, y repetir cualquier prueba: aparece `GET /api/pacientes/3/historia` con el identificador a la vista.
-- **Cambiar un rol.** En **Mi perfil**, **Guardar nombre** manda solo el nombre. En la pestaña **Red**, editá y reenviá `PUT /api/perfil` agregando `"rol"` (`paciente`, `medico`, `administrativo` o `sistemas`). En modo vulnerable el servidor lo guarda. En modo seguro responde 400. El rol de otra persona se cambia desde **Administración**, con Nora.
+- **Cambiar el identificador en la URL (V11).** En la barra de direcciones, reemplazar el número: `#/historias/3`, `#/resultados/3`, `#/turnos/102`, `#/facturas/202` o `#/reportes/3`. `#/reportes`, sin número, pide el gráfico.
+- **Ver la petición real.** Abrir las DevTools (**F12**) → **Red**, y repetir cualquier prueba: aparece `GET /api/pacientes/3/historia` con el identificador a la vista.
+- **Ver el gráfico recortado.** `#/reportes` no está en el menú de Ana ni en el de Nora. En modo vulnerable Ana lo abre igual y el gráfico cuenta a todo el hospital. En modo seguro recibe 403. Con la Dra. Molina el gráfico es clínico, sin facturas. Con Carlos es de turnos y facturas, sin casos críticos. Nora no lo ve.
+- **Cambiar un rol.** **Mi perfil** no ofrece un rol para elegir: **Guardar nombre** manda solo `{ "nombre": "Ana Paz" }`. En **Red**, clic derecho sobre `perfil` → **Editar y reenviar**, y el cuerpo queda así:
+
+```json
+{ "nombre": "Ana Paz", "rol": "sistemas", "activo": true }
+```
+
+`rol` solo acepta `paciente`, `medico`, `administrativo` o `sistemas`. En modo vulnerable el servidor lo guarda y el menú pasa a ser el de ese rol. En modo seguro responde 400 y no guarda nada. El rol de otra persona se cambia desde **Administración**, con Nora (`PATCH /api/admin/usuarios/:id`). En modo seguro solo Sistemas puede hacerlo.
+
+**Administración** nombra dos cosas. El rol de Carlos (`administrativo`) gestiona agenda y facturas. El ítem de menú Administración (`#/admin`) es usuarios y roles, y solo aparece para Sistemas.
+
 - **Probar con otro rol.** Entrar como la Dra. Molina, Carlos o Nora para ver la **separación de funciones**: la médica no ve facturas, administración no ve historias y sistemas no ve datos clínicos.
 
 > Con otro rol, algunos accesos del modo seguro son **legítimos**: la Dra. Molina atiende a María, y administración ve todos los turnos y facturas. La guía está narrada con Ana Paz para que el rechazo sea claro.
 
-## 7. Guion sugerido para la exposición (≈10 minutos)
+## 7. Guion sugerido para la exposición (≈12 minutos)
 
 1. **(1 min)** Qué es MediPortal y su premisa: *cada persona ve solo lo que le corresponde*.
 2. **(4 min)** Modo vulnerable como Ana: pruebas 1, 2, 5, 6, 7 y 11. Mostrar la respuesta con datos de María y cómo un perfil común se convierte en Sistemas.
 3. **(3 min)** **Restablecer datos**, pasar a **Seguro** y repetir las mismas pruebas: todo `403`/`404`/`400`.
 4. **(1 min)** Mostrar en [`server/autorizacion.js`](../server/autorizacion.js) la línea `if (esVulnerable(modo)) return true;` y la regla que sigue: ahí está la diferencia.
-5. **(1 min)** Conclusión: el frontend es usabilidad; la autorización se decide en el servidor, por recurso y por función.
+5. **(1 min)** Entrar como Dra. Molina, Carlos y Nora: la médica no ve facturas, administración no ve historias y sistemas no ve datos clínicos. El modo seguro no deshace lo que el modo vulnerable ya escribió: si se reprogramó, pagó o cambió un rol, usar **Restablecer datos** antes.
+6. **(1 min)** Conclusión: el frontend es usabilidad; la autorización se decide en el servidor, por recurso y por función.
 
 ## 8. Si algo no sale como se espera
 
@@ -137,4 +154,6 @@ Los botones ejecutan las mismas peticiones que se pueden hacer a mano. Sirven pa
 | El menú no muestra Administración | El menú sigue el rol de la sesión. Para cambiar un rol, entrá como Nora y usá **Administración** |
 | Un resultado de la guía quedó de la prueba anterior | Cambiar de modo limpia la guía. También sirve volver a presionar el botón |
 | `EADDRINUSE` al iniciar | El puerto 3000 está ocupado: `PORT=3100 npm start` |
+| Dos ventanas muestran modos distintos | No pueden: el modo es uno para todo el proceso. Recargar muestra el mismo |
+| Al pasar a Seguro siguen los cambios de la prueba anterior | Cambiar de modo no deshace lo escrito. **Restablecer datos** vuelve al estado inicial y no cierra la sesión |
 | Querer comprobar todo de una vez | `npm run verificar` recorre la API en ambos modos y falla ante cualquier desvío |
